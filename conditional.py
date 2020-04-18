@@ -17,7 +17,7 @@ from pyspark.ml.param.shared import Param
 from pyspark.ml.param.shared import Params
 from pyspark.ml.param.shared import TypeConverters
 
-class AttributionRates(Transformer, HasInputCol, HasOutputCol):
+class Conditional(Transformer, HasInputCol, HasOutputCol):
 
   @keyword_only
   def __init__(self, inputCol=None, outputCol=None, groupByCol=None):

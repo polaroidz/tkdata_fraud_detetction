@@ -29,11 +29,11 @@ from pyspark.ml.param.shared import TypeConverters
 from pyspark.ml.classification import LogisticRegression
 
 from date import DateColumns
-from attribution import AttributionRates
+from conditional import Conditional
 
 # Constants
 
-TARGET = "is_attributed"
+TARGET = "is_condibuted"
 
 # Arguments
 
@@ -81,43 +81,33 @@ dt_pipeline = Pipeline(stages=[
   dt_minmax
 ])
 
-attr_cols = [
-  "attr_app",
-  "attr_device",
-  "attr_os",
-  "attr_channel",
-  #"attr_app_channel",
-  #"attr_app_device",
-  #"attr_app_os"
+cond_cols = [
+  "cond_app",
+  "cond_device",
+  "cond_os",
+  "cond_channel"
 ]
 
-attr_app = AttributionRates(inputCol=TARGET, groupByCol=["app"], outputCol="attr_app")
-attr_device = AttributionRates(inputCol=TARGET, groupByCol=["device"], outputCol="attr_device")
-attr_os = AttributionRates(inputCol=TARGET, groupByCol=["os"], outputCol="attr_os")
-attr_channel = AttributionRates(inputCol=TARGET, groupByCol=["channel"], outputCol="attr_channel")
+cond_app = Conditional(inputCol=TARGET, groupByCol=["app"], outputCol="cond_app")
+cond_device = Conditional(inputCol=TARGET, groupByCol=["device"], outputCol="cond_device")
+cond_os = Conditional(inputCol=TARGET, groupByCol=["os"], outputCol="cond_os")
+cond_channel = Conditional(inputCol=TARGET, groupByCol=["channel"], outputCol="cond_channel")
 
-attr_app_channel = AttributionRates(inputCol=TARGET, groupByCol=["app", "channel"], outputCol="attr_app_channel")
-attr_app_device = AttributionRates(inputCol=TARGET, groupByCol=["app", "device"], outputCol="attr_app_device")
-attr_app_os = AttributionRates(inputCol=TARGET, groupByCol=["app", "os"], outputCol="attr_app_os")
+cond_ass = VectorAssembler(inputCols=cond_cols, outputCol="cond_cols", handleInvalid="skip")
 
-attr_ass = VectorAssembler(inputCols=attr_cols, outputCol="attr_cols", handleInvalid="skip")
-
-attr_pipeline = Pipeline(stages=[
-  attr_app,
-  attr_device,
-  attr_os,
-  attr_channel,
-  #attr_app_channel,
-  #attr_app_device,
-  #attr_app_os,
-  attr_ass
+cond_pipeline = Pipeline(stages=[
+  cond_app,
+  cond_device,
+  cond_os,
+  cond_channel,
+  cond_ass
 ])
 
 # Features
 
 fetures_cols = [
   "dt_scaled",
-  "attr_cols"
+  "cond_cols"
 ]
 
 features_ass = VectorAssembler(inputCols=fetures_cols, outputCol="features")
@@ -126,7 +116,7 @@ features_ass = VectorAssembler(inputCols=fetures_cols, outputCol="features")
 
 pipeline = Pipeline(stages=[
   dt_pipeline,
-  attr_pipeline,
+  cond_pipeline,
   features_ass
 ])
 
