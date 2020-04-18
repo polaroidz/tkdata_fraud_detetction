@@ -38,6 +38,8 @@ TARGET = "is_attributed"
 # Arguments
 
 train_path = "/hdfs/tkdata_ads_fraud/raw/train_sample.csv"
+#train_path = "/hdfs/tkdata_ads_fraud/raw/train.csv"
+
 output_path  = "/hdfs/tkdata_ads_fraud/data/train_features.parquet"
 
 # Hyperparameters
@@ -53,6 +55,21 @@ df = sql.read \
  .option("inferSchema", "true") \
  .option("header", "true") \
  .load(train_path)
+
+positive = df.where(df[TARGET] == 1)
+negative = df.where(df[TARGET] == 0)
+
+# Downsapling
+fraction = positive.count() / negative.count()
+negative = negative.sample(withReplacement=True, fraction=fraction, seed=42)
+
+# Upsampling
+#fraction = negative.count() / positive.count()
+#positive = positive.sample(withReplacement=True, fraction=fraction, seed=42)
+
+df = positive.union(negative)
+df = df.orderBy(F.rand())
+df = df.coalesce(4)
 
 dt_trans = DateColumns(inputCol="click_time")
 dt_ass = VectorAssembler(inputCols=dt_trans.getOutputColumns(), outputCol="dt_cols", handleInvalid="skip")
