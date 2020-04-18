@@ -7,7 +7,7 @@ from pyspark import keyword_only
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
-from pyspark.sql.types import LongType
+from pyspark.sql.types import FloatType
 
 from pyspark.ml import Transformer
 from pyspark.ml import Pipeline
@@ -22,6 +22,7 @@ from pyspark.ml.feature import PCA
 from pyspark.ml.param.shared import HasInputCol
 from pyspark.ml.param.shared import HasInputCols
 from pyspark.ml.param.shared import HasOutputCol
+from pyspark.ml.param.shared import HasOutputCols
 from pyspark.ml.param.shared import Param
 from pyspark.ml.param.shared import Params
 from pyspark.ml.param.shared import TypeConverters
@@ -30,10 +31,11 @@ from pyspark.ml.classification import LogisticRegression
 
 from date import DateColumns
 from conditional import Conditional
+from statistics import Statistics
 
 # Constants
 
-TARGET = "is_condibuted"
+TARGET = "is_attributed"
 
 # Arguments
 
@@ -55,6 +57,8 @@ df = sql.read \
  .option("inferSchema", "true") \
  .option("header", "true") \
  .load(train_path)
+
+#df.groupBy(TARGET).count().show()
 
 positive = df.where(df[TARGET] == 1)
 negative = df.where(df[TARGET] == 0)
@@ -103,10 +107,47 @@ cond_pipeline = Pipeline(stages=[
   cond_ass
 ])
 
+# Statistics
+
+var_app_channel = Statistics(
+  inputCol="dt_day", 
+  prefix="channel_device", 
+  groupByCol=["app", "channel"], 
+  statistics=["var"]
+)
+
+var_app_os = Statistics(
+ inputCol="dt_hour", 
+ prefix="app_os", 
+ groupByCol=["app", "os"], 
+ statistics=["var"]
+)
+
+var_day_channel = Statistics(
+ inputCol="dt_hour", 
+ prefix="app_os", 
+ groupByCol=["dt_day", "channel"], 
+ statistics=["var"]
+)
+
+count_day_hour = Statistics(
+ inputCol="channel", 
+ prefix="app_os", 
+ groupByCol=["ip", "dt_day", "dt_hour"], 
+ statistics=["count"]
+)
+
+stats_pipeline = Pipeline(stages=[
+  var_app_channel,
+  var_app_os,
+#  var_day_channel,
+#  count_day_hour
+])
+
 # Features
 
-fetures_cols = [
-  "dt_scaled",
+fetures_cols  = [
+  "dt_scaled", 
   "cond_cols"
 ]
 
@@ -116,14 +157,24 @@ features_ass = VectorAssembler(inputCols=fetures_cols, outputCol="features")
 
 pipeline = Pipeline(stages=[
   dt_pipeline,
-  cond_pipeline,
-  features_ass
+#  cond_pipeline,
+#  features_ass
+  stats_pipeline
 ])
+
+cols = df.columns
 
 pipeline = pipeline.fit(df)
 
 df = pipeline.transform(df)
 
+dt_cols = filter(lambda x: "dt_" in x, df.columns)
+dt_cols = list(dt_cols)
+
+df = df.drop(*cols, *dt_cols)
+df.show()
+
+"""
 # Model
 
 lr = LogisticRegression(
@@ -161,3 +212,4 @@ print(summary.truePositiveRateByLabel)
 
 print("Area Under ROC")
 print(summary.areaUnderROC)
+"""
