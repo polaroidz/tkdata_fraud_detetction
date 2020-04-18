@@ -75,11 +75,15 @@ class Statistics(Transformer, HasInputCol, HasOutputCols):
         agg = F.count(input).alias(name)
       elif stat == 'sum':
         agg = F.sum(input).alias(name)
+      elif stat == 'nunique' or stat == 'distinct':
+        agg = F.countDistinct(input).alias(name)
 
       aggs.append(agg)
 
     temp = df.groupBy(groupByCol).agg(*aggs)
     temp = temp.select(*groupByCol, *outputs)
+
+    temp = temp.na.fill(0.0)
 
     df = df.join(temp, groupByCol, how='left')
     df = df.coalesce(1)
